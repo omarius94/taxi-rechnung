@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fancy Taxi Rechnung Generator</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    /* Fancy, taxi-inspirierter Hintergrund und modernes Styling */
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1c92d2, #f2fcfe);
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+      margin-bottom: 20px;
+    }
+    form {
+      max-width: 600px;
+      margin: auto;
+      background: rgba(255, 255, 255, 0.98);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px;
+      width: 100%;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007BFF;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    p {
+      font-size: 0.9em;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Fancy Taxi Rechnung Generator</h1>
+  <form id="invoiceForm">
+    <label for="customer">Rechnung für (Kunde):</label>
+    <select id="customer">
+      <option value="Gilomen Limousinen">Gilomen Limousinen</option>
+      <option value="Kunde B">Kunde B</option>
+      <option value="Kunde C">Kunde C</option>
+    </select>
+
+    <label for="invoiceDate">Rechnungsdatum:</label>
+    <input type="date" id="invoiceDate" required>
+
+    <label for="serviceDate">Leistungsdatum:</label>
+    <input type="date" id="serviceDate" required>
+
+    <label for="departure">Abfahrtsort:</label>
+    <input type="text" id="departure" placeholder="z.B. Permanence, Bern" required>
+
+    <label for="destination">Zielort:</label>
+    <input type="text" id="destination" placeholder="z.B. Herrenschwanden" required>
+
+    <label for="price">Preis in CHF:</label>
+    <input type="number" step="0.01" id="price" required>
+
+    <p>Die Abzgl. Mehrwertsteuer wird automatisch berechnet.</p>
+
+    <button type="button" id="generatePdf">PDF generieren</button>
+  </form>
+
+  <!-- jsPDF Bibliothek -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    // Registrierung des Service Workers
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+      .then(function(registration) {
+        console.log('Service Worker registered with scope:', registration.scope);
+      })
+      .catch(function(error) {
+        console.log('Service Worker registration failed:', error);
+      });
+    }
+
+    document.getElementById('generatePdf').addEventListener('click', function() {
+      // Formularwerte abrufen
+      const customer = document.getElementById('customer').value;
+      const invoiceDate = document.getElementById('invoiceDate').value;
+      const serviceDate = document.getElementById('serviceDate').value;
+      const departure = document.getElementById('departure').value;
+      const destination = document.getElementById('destination').value;
+      const price = parseFloat(document.getElementById('price').value);
+
+      if (!invoiceDate || !serviceDate || !departure || !destination || isNaN(price)) {
+        alert('Bitte alle Felder korrekt ausfüllen.');
+        return;
+      }
+
+      // Berechnung der Mehrwertsteuer: Preis / 108.1 * 8.1
+      const mwst = price / 108.1 * 8.1;
+      const total = price - mwst;
+
+      // Mapping: Kunde -> Adresse
+      const customerAddresses = {
+        "Gilomen Limousinen": "Gilomen Limousinen GmbH\nThunstrasse 36\n3112 Allmendingen"
+      };
+      const addressText = customerAddresses[customer] || "";
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // Kopfbereich: Hintergrundfarbe für Header
+      doc.setFillColor(0, 123, 255); // kräftiges Blau
+      doc.rect(0, 0, 210, 40, 'F');
+
+      // Kopfzeile: Firmenname und Kontaktdaten in Weiß
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("Taxi Hutko", 105, 20, { align: 'center' });
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text("Tel. 079 636 28 79", 105, 28, { align: 'center' });
+
+      // Zurücksetzen der Textfarbe auf Schwarz
+      doc.setTextColor(0, 0, 0);
+
+      // Trennlinie unter Header
+      doc.setLineWidth(0.5);
+      doc.line(10, 45, 200, 45);
+
+      // Überschrift der Rechnung
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("Rechnung", 105, 55, { align: 'center' });
+
+      // Rechnungsdaten
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.text("Rechnungsdatum: " + invoiceDate, 10, 70);
+      doc.text("Leistungsdatum: " + serviceDate, 10, 78);
+
+      // Kundenangaben und Adresse
+      doc.setFont("helvetica", "bold");
+      doc.text("Rechnung für: " + customer, 10, 90);
+      if (addressText) {
+        doc.setFont("helvetica", "normal");
+        const addressLines = doc.splitTextToSize(addressText, 180);
+        doc.text(addressLines, 10, 98);
+      }
+
+      // Tabelle für Fahrtinformationen in einem farbigen Rahmen
+      const startY = addressText ? 115 : 105;
+      doc.setFillColor(230, 230, 250); // zartes Lavendel
+      doc.rect(10, startY - 5, 190, 30, 'F');
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Abfahrtsort", 15, startY + 10);
+      doc.text("Zielort", 80, startY + 10);
+      doc.text("Preis in CHF", 150, startY + 10);
+      doc.setFont("helvetica", "normal");
+      doc.text(departure, 15, startY + 20);
+      doc.text(destination, 80, startY + 20);
+      doc.text(price.toFixed(2), 150, startY + 20);
+
+      // Berechnungen (Mehrwertsteuer und Total)
+      doc.setFont("helvetica", "bold");
+      doc.text("Abzgl. MwSt.: " + mwst.toFixed(2), 15, startY + 35);
+      doc.text("Total zahlbar in CHF: " + total.toFixed(2), 15, startY + 43);
+
+      // Trennlinie unter der Tabelle
+      doc.setLineWidth(0.5);
+      doc.line(10, startY + 48, 200, startY + 48);
+
+      // Zahlungsinformationen in einem eigenen, dezenten Kasten
+      const paymentY = startY + 58;
+      doc.setFillColor(245, 245, 245); // sehr helles Grau
+      doc.rect(10, paymentY - 5, 190, 25, 'F');
+      doc.setFont("helvetica", "bold");
+      doc.text("Zahlungsinformationen:", 15, paymentY + 5);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      const paymentInfo = [
+        "Name: BESIC",
+        "Vorname: HAJRUDIN",
+        "IBAN: CH92 0900 0000 2534 9858 1",
+        "BANK: PostFinance"
+      ];
+      doc.text(paymentInfo, 15, paymentY + 15);
+
+      // Fußzeile
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text("Taxi Hutko    Tel. 079 636 28 79", 10, 290);
+
+      const filename = departure.replace(/ /g, '_') + "_" + destination.replace(/ /g, '_') + "_" + serviceDate + ".pdf";
+      doc.save(filename);
+    });
+  </script>
+</body>
+</html>

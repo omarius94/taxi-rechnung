@@ -1,0 +1,8 @@
+{
+  "name": "Taxi Rechnung Generator",
+  "short_name": "RechnungGen",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "description": "Generiert Taxi Rechnungen als PDF"
+}
